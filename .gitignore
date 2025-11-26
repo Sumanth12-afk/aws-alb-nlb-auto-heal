@@ -1,0 +1,84 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+terraform.tfvars
+*.tfplan
+*.tfvars.backup
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/.terraform.lock.hcl
+
+# Lambda packages
+*.zip
+lambda_utils_layer.zip
+target_monitor.zip
+diagnostics.zip
+auto_heal.zip
+verify.zip
+slack_notifier.zip
+**/*.zip
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Test files
+test_event.json
+response.json
+payload.json
+**/payload.json
+**/response.json
+
+# Secrets
+*.pem
+*.key
+secrets/
+
+# Local config
+local_config.json
+.env
+.env.local
+
+# Documentation
+LINKEDINPOST.md
+CHALLENGES.md
+

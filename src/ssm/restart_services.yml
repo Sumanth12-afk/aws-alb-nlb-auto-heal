@@ -1,0 +1,88 @@
+---
+schemaVersion: '0.3'
+description: 'Restart application services on EC2 instance'
+assumeRole: '{{ AutomationAssumeRole }}'
+parameters:
+  InstanceId:
+    type: String
+    description: EC2 Instance ID
+  Classification:
+    type: String
+    description: Failure classification
+    default: 'Application Failure'
+  AutomationAssumeRole:
+    type: String
+    description: IAM role for automation execution
+    default: ''
+mainSteps:
+  - name: RestartDocker
+    action: aws:runCommand
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{ InstanceId }}'
+      Parameters:
+        commands:
+          - |
+            echo "Restarting Docker service..."
+            systemctl restart docker || echo "Docker restart failed"
+            sleep 5
+            systemctl is-active docker || echo "Docker not active after restart"
+  - name: RestartECSAgent
+    action: aws:runCommand
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{ InstanceId }}'
+      Parameters:
+        commands:
+          - |
+            echo "Restarting ECS agent..."
+            systemctl restart ecs || echo "ECS agent restart failed"
+            sleep 5
+            systemctl is-active ecs || echo "ECS agent not active after restart"
+  - name: RestartApplicationServices
+    action: aws:runCommand
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{ InstanceId }}'
+      Parameters:
+        commands:
+          - |
+            echo "Restarting application services..."
+            # Restart common application services
+            systemctl restart nginx || echo "nginx not found"
+            systemctl restart apache2 || echo "apache2 not found"
+            systemctl restart supervisor || echo "supervisor not found"
+  - name: ClearStuckProcesses
+    action: aws:runCommand
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{ InstanceId }}'
+      Parameters:
+        commands:
+          - |
+            echo "Clearing stuck processes..."
+            pkill -9 -f "defunct" || echo "No defunct processes"
+            # Clear any zombie processes
+  - name: FlushCaches
+    action: aws:runCommand
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{ InstanceId }}'
+      Parameters:
+        commands:
+          - |
+            echo "Flushing caches..."
+            sync
+            echo 3 > /proc/sys/vm/drop_caches || echo "Cache flush failed"
+outputs:
+  - RestartDocker.Output
+  - RestartECSAgent.Output
+  - RestartApplicationServices.Output
+  - ClearStuckProcesses.Output
+  - FlushCaches.Output
+

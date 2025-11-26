@@ -1,0 +1,78 @@
+{
+  "classification_rules": {
+    "Application Failure": {
+      "conditions": [
+        "application_failure == true",
+        "service_status == 'failed'",
+        "health_endpoint_status != '200'"
+      ],
+      "priority": 1,
+      "recommended_action": "repair"
+    },
+    "Resource Bottleneck": {
+      "conditions": [
+        "cpu_usage > 80",
+        "memory_usage > 80",
+        "disk_usage > 90"
+      ],
+      "priority": 2,
+      "recommended_action": "repair"
+    },
+    "Agent Failure": {
+      "conditions": [
+        "ssm_agent_failure == true",
+        "cloudwatch_agent_failure == true",
+        "ssm_available == false"
+      ],
+      "priority": 3,
+      "recommended_action": "replace"
+    },
+    "OS-level Failure": {
+      "conditions": [
+        "os_level_failure == true",
+        "kernel_errors > 0",
+        "system_corruption == true"
+      ],
+      "priority": 1,
+      "recommended_action": "replace"
+    },
+    "Network Degradation": {
+      "conditions": [
+        "network_degradation == true",
+        "packet_drops > 100",
+        "ena_errors > 0"
+      ],
+      "priority": 2,
+      "recommended_action": "repair"
+    },
+    "Disk Corruption": {
+      "conditions": [
+        "disk_corruption == true",
+        "filesystem_errors > 0",
+        "disk_io_errors > 0"
+      ],
+      "priority": 1,
+      "recommended_action": "replace"
+    },
+    "Unknown State": {
+      "conditions": [
+        "unknown_state == true",
+        "diagnostic_score < 30"
+      ],
+      "priority": 0,
+      "recommended_action": "replace"
+    }
+  },
+  "repair_thresholds": {
+    "max_repair_attempts": 2,
+    "cooldown_minutes": 15,
+    "replace_score_threshold": 30,
+    "replace_after_repair_attempts": 2
+  },
+  "verification_requirements": {
+    "all_checks_required": true,
+    "health_check_timeout_seconds": 300,
+    "min_healthy_checks": 3
+  }
+}
+

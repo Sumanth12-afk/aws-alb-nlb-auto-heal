@@ -1,0 +1,106 @@
+---
+schemaVersion: '0.3'
+description: 'Verify instance health before re-registering to target group'
+assumeRole: '{{ AutomationAssumeRole }}'
+parameters:
+  InstanceId:
+    type: String
+    description: EC2 Instance ID to verify
+  HealthCheckEndpoint:
+    type: String
+    description: Application health check endpoint
+    default: '/health'
+  HealthCheckPort:
+    type: String
+    description: Health check port
+    default: '80'
+  AutomationAssumeRole:
+    type: String
+    description: IAM role for automation execution
+    default: ''
+mainSteps:
+  - name: VerifySSMOnline
+    action: aws:runCommand
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{ InstanceId }}'
+      Parameters:
+        commands:
+          - |
+            echo "Verifying SSM agent is online..."
+            systemctl is-active amazon-ssm-agent && echo "SSM_AGENT_ONLINE" || echo "SSM_AGENT_OFFLINE"
+  - name: CheckApplicationHealth
+    action: aws:runCommand
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{ InstanceId }}'
+      Parameters:
+        commands:
+          - |
+            echo "Checking application health endpoint..."
+            # Get private IP
+            PRIVATE_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
+            # Check health endpoint
+            HTTP_CODE=$(curl -f -s -o /dev/null -w '%{http_code}' --max-time 5 http://${PRIVATE_IP}:{{ HealthCheckPort }}{{ HealthCheckEndpoint }} || echo "000")
+            echo "Health check HTTP code: ${HTTP_CODE}"
+            if [ "${HTTP_CODE}" = "200" ] || [ "${HTTP_CODE}" = "204" ]; then
+              echo "HEALTH_CHECK_PASSED"
+            else
+              echo "HEALTH_CHECK_FAILED"
+            fi
+  - name: CheckResourceUsage
+    action: aws:runCommand
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{ InstanceId }}'
+      Parameters:
+        commands:
+          - |
+            echo "Checking resource usage..."
+            CPU_USAGE=$(top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1)
+            MEM_USAGE=$(free -m | awk 'NR==2{printf "%.2f", $3*100/$2}')
+            echo "CPU: ${CPU_USAGE}%, Memory: ${MEM_USAGE}%"
+            if (( $(echo "${CPU_USAGE} < 90" | bc -l) )) && (( $(echo "${MEM_USAGE} < 90" | bc -l) )); then
+              echo "RESOURCE_USAGE_OK"
+            else
+              echo "RESOURCE_USAGE_HIGH"
+            fi
+  - name: CheckLogAnomalies
+    action: aws:runCommand
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{ InstanceId }}'
+      Parameters:
+        commands:
+          - |
+            echo "Checking for log anomalies..."
+            ERROR_COUNT=$(tail -n 100 /var/log/syslog 2>/dev/null | grep -i "error\|fatal\|critical" | wc -l)
+            echo "Recent errors: ${ERROR_COUNT}"
+            if [ "${ERROR_COUNT}" -lt 10 ]; then
+              echo "LOG_CHECK_PASSED"
+            else
+              echo "LOG_CHECK_FAILED"
+            fi
+  - name: VerifyServicesRunning
+    action: aws:runCommand
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{ InstanceId }}'
+      Parameters:
+        commands:
+          - |
+            echo "Verifying services are running..."
+            systemctl is-active docker && echo "DOCKER_RUNNING" || echo "DOCKER_NOT_RUNNING"
+            systemctl is-active ecs && echo "ECS_RUNNING" || echo "ECS_NOT_RUNNING"
+outputs:
+  - VerifySSMOnline.Output
+  - CheckApplicationHealth.Output
+  - CheckResourceUsage.Output
+  - CheckLogAnomalies.Output
+  - VerifyServicesRunning.Output
+

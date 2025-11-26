@@ -1,0 +1,93 @@
+---
+schemaVersion: '0.3'
+description: 'Automated diagnostics for unhealthy EC2 instances'
+assumeRole: '{{ AutomationAssumeRole }}'
+parameters:
+  InstanceId:
+    type: String
+    description: EC2 Instance ID to diagnose
+  AutomationAssumeRole:
+    type: String
+    description: IAM role for automation execution
+    default: ''
+mainSteps:
+  - name: CheckSSMAgent
+    action: aws:runCommand
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{ InstanceId }}'
+      Parameters:
+        commands:
+          - |
+            echo "Checking SSM Agent status..."
+            systemctl status amazon-ssm-agent || echo "SSM agent not running"
+  - name: CheckServiceStatus
+    action: aws:runCommand
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{ InstanceId }}'
+      Parameters:
+        commands:
+          - |
+            echo "Checking service status..."
+            systemctl list-units --type=service --state=failed --no-pager || true
+            systemctl is-active docker || echo "docker_inactive"
+            systemctl is-active ecs || echo "ecs_inactive"
+  - name: CheckResourceUsage
+    action: aws:runCommand
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{ InstanceId }}'
+      Parameters:
+        commands:
+          - |
+            echo "Checking resource usage..."
+            top -bn1 | grep "Cpu(s)" | awk '{print $2}' | cut -d'%' -f1
+            free -m | awk 'NR==2{printf "%.2f", $3*100/$2}'
+            df -h | awk '$NF=="/"{print $5}' | sed 's/%//'
+  - name: CheckNetworkStats
+    action: aws:runCommand
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{ InstanceId }}'
+      Parameters:
+        commands:
+          - |
+            echo "Checking network statistics..."
+            netstat -i | grep -i drop || echo "no_drops"
+            ethtool -S eth0 2>/dev/null | grep -i error || echo "no_errors"
+  - name: CheckLogs
+    action: aws:runCommand
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{ InstanceId }}'
+      Parameters:
+        commands:
+          - |
+            echo "Checking logs..."
+            tail -n 100 /var/log/syslog 2>/dev/null | grep -i "error\|fatal\|critical" | head -20 || echo "no_critical_errors"
+            journalctl -u docker --no-pager -n 50 2>/dev/null || echo "no_docker_logs"
+  - name: CheckCloudWatchAgent
+    action: aws:runCommand
+    inputs:
+      DocumentName: AWS-RunShellScript
+      InstanceIds:
+        - '{{ InstanceId }}'
+      Parameters:
+        commands:
+          - |
+            echo "Checking CloudWatch Agent..."
+            systemctl is-active amazon-cloudwatch-agent || echo "cloudwatch_agent_inactive"
+outputs:
+  - CheckSSMAgent.Output
+  - CheckServiceStatus.Output
+  - CheckResourceUsage.Output
+  - CheckNetworkStats.Output
+  - CheckLogs.Output
+  - CheckCloudWatchAgent.Output
+

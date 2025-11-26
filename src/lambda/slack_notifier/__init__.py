@@ -1,0 +1,2 @@
+# Slack notifier Lambda package
+

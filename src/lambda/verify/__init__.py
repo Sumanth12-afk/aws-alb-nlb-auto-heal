@@ -1,0 +1,2 @@
+# Verify Lambda package
+

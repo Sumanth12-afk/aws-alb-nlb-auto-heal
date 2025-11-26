@@ -1,0 +1,123 @@
+# =============================================================================
+# Dynamic Auto-Heal for Load Balancers - Terraform Variables
+# =============================================================================
+# Copy this file to terraform.tfvars and update with your values
+# cp terraform.tfvars.example terraform.tfvars
+
+# -----------------------------------------------------------------------------
+# Basic Configuration
+# -----------------------------------------------------------------------------
+
+# AWS region where resources will be created
+aws_region = "us-east-1"
+
+# Environment name (used for resource naming and tagging)
+# Options: dev, staging, prod
+environment = "prod"
+
+# -----------------------------------------------------------------------------
+# Target Group Configuration
+# -----------------------------------------------------------------------------
+
+# List of ALB/NLB target group ARNs to monitor
+# Format: ["arn:aws:elasticloadbalancing:region:account:targetgroup/name/id"]
+# Example:
+# target_group_arns = [
+#   "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/my-app-tg/1234567890123456",
+#   "arn:aws:elasticloadbalancing:us-east-1:123456789012:targetgroup/my-api-tg/9876543210987654"
+# ]
+target_group_arns = []
+
+# How often to check target health (in minutes)
+# Recommended: 5 minutes for production, 1-2 minutes for testing
+monitoring_interval_minutes = 5
+
+# -----------------------------------------------------------------------------
+# Health Check Configuration
+# -----------------------------------------------------------------------------
+
+# Application health check endpoint path
+# This endpoint will be checked during verification before re-registering targets
+health_check_endpoint = "/health"
+
+# Application health check port
+# Use "traffic-port" to use the target group's port, or specify a number
+health_check_port = "80"
+
+# -----------------------------------------------------------------------------
+# Lambda Configuration
+# -----------------------------------------------------------------------------
+
+# Lambda function timeout in seconds
+# Recommended: 300 (5 minutes) for most cases
+# Increase if you have long-running diagnostics or repairs
+lambda_timeout = 300
+
+# Lambda function memory size in MB
+# Recommended: 512 MB for most cases
+# Increase if you need more CPU power for faster execution
+lambda_memory_size = 512
+
+# -----------------------------------------------------------------------------
+# VPC Configuration (Optional)
+# -----------------------------------------------------------------------------
+
+# Set to true if Lambda functions need VPC access
+# Required if your instances are in private subnets and Lambda needs to access them
+enable_vpc = false
+
+# VPC ID for Lambda functions (only if enable_vpc = true)
+# vpc_id = "vpc-12345678"
+
+# Subnet IDs for Lambda functions (only if enable_vpc = true)
+# Provide at least 2 subnets in different AZs for high availability
+# subnet_ids = [
+#   "subnet-12345678",
+#   "subnet-87654321"
+# ]
+
+# Security group IDs for Lambda functions (only if enable_vpc = true)
+# Must allow outbound internet access for AWS API calls
+# security_group_ids = [
+#   "sg-12345678"
+# ]
+
+# -----------------------------------------------------------------------------
+# EventBridge Configuration
+# -----------------------------------------------------------------------------
+
+# EventBridge event bus name
+# Use "default" for the default event bus, or specify a custom bus name
+event_bus_name = "default"
+
+# -----------------------------------------------------------------------------
+# Notification Configuration (Optional)
+# -----------------------------------------------------------------------------
+
+# SNS topic ARN for notifications (leave empty to create new topic)
+# If empty, a new SNS topic will be created
+# sns_topic_arn = "arn:aws:sns:us-east-1:123456789012:my-notifications"
+
+# Slack webhook URL for notifications (optional)
+# Get this from your Slack workspace: https://api.slack.com/messaging/webhooks
+# slack_webhook_url = "https://hooks.slack.com/services/YOUR/WEBHOOK/URL"
+
+# Slack channel for notifications (e.g., #general, #alerts)
+# slack_channel = "#general"
+
+# Slack username for bot messages
+# slack_username = "Auto-Heal Bot"
+
+# Microsoft Teams webhook URL for notifications (optional)
+# Get this from your Teams channel: Add an Incoming Webhook connector
+# teams_webhook_url = "https://outlook.office.com/webhook/YOUR/WEBHOOK/URL"
+
+# -----------------------------------------------------------------------------
+# Advanced Configuration
+# -----------------------------------------------------------------------------
+
+# TTL in days for DynamoDB tables (automatic cleanup)
+# Records older than this will be automatically deleted
+# Recommended: 90 days for production
+dynamodb_ttl_days = 90
+
